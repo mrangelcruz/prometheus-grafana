@@ -102,7 +102,8 @@ For Loki:
 
 Edit the values file: <br>
 
-/home/angelcruz/repos/home_lab_k8/prometheus/Helm-Charts/loki/loki-stack/values.yaml
+/home/angelcruz/repos/prometheus-grafana/Helm-Charts/loki/loki-stack/values.yaml
+
 
 ![loki-values](images/loki-values.png)
 
@@ -110,7 +111,7 @@ __HELM INSTALL__
 
 workspace:<br>
 
-    /home/angelcruz/repos/home_lab_k8/prometheus/Helm-Charts/kube-prometheus-stack
+    /home/angelcruz/repos/prometheus-grafana/Helm-Charts/Helm-Charts/kube-prometheus-stack
 
 helm install:<br>
 

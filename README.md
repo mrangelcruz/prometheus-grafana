@@ -430,3 +430,50 @@ This gives you more control and integrates cleanly with the Prometheus Operator.
 You can deploy a simple app with a /metrics endpoint and see if Prometheus picks it up. I can help you scaffold that in Python or Node.js if you'd like.
 
 Would you like a working example of a ServiceMonitor and a sample app that exposes metrics?
+
+---
+
+Monitoring Pods:
+
+![k-get-pods-monitoring](images/k-pods-monitoring.png)
+
+# PORT FORWARDS
+
+Loki: 
+
+    kubectl port-forward -n monitoring svc/loki 3100:3100
+
+Grafana:
+
+    kubectl port-forward -n monitoring pod/prometheus-grafana-6cb9d8559c-hccm4 3001:3000
+
+![grafana](images/grafana-website.png)
+
+
+Prometheus:
+
+    kubectl port-forward -n monitoring prometheus-prometheus-kube-prometheus-prometheus-0 9090
+
+
+![prometheus-url](images/prometheus-url.png)
+
+---
+# MISCELLANEOUS COMMANDS
+## To return actual container name
+
+Situation: k exec into an pod and errors with container not found
+
+    k exec -n monitoring -it python-logger-6dd866db45-77cz7 -- /bin/sh error: unable to upgrade connection: container not found ("app")
+
+Ah — that error means your container isn’t named app, even though your deployment might label it that way. Kubernetes defaults to naming containers based on the image name unless explicitly overridden.
+
+### To find the container name
+
+    kubectl get pod -n monitoring python-logger-6dd866db45-5xpm6  -o jsonpath='{.spec.containers[*].name}'
+
+    returns:
+    app
+
+
+
+

@@ -9,25 +9,61 @@ To install Grafana, Prometheus, and Loki on your Kubernetes cluster — specific
 Here’s a step-by-step breakdown:
 
 🛠️ 1. Use Helm to Install the Monitoring Stack
-You'll likely use the kube-prometheus-stack Helm chart, which bundles Prometheus, Grafana, and Alertmanager. Loki can be added separately or via the Grafana Helm chart.
 
-bash
+#### PROMETHEUS
+
+We will independently install Prometheus, Grafana, and Loki via the Helm chart.
+
+    cd ./Helm-Charts/prometheus
 
     helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-    helm repo add grafana https://grafana.github.io/helm-charts
+
     helm repo update
 
-    helm repo ls
+    helm install prometheus prometheus-community/prometheus -n monitoring --create-namespace -f prometheus-values.yaml
 
-    NAME                	URL                                               
-    grafana             	https://grafana.github.io/helm-charts
-    prometheus-community	https://prometheus-community.github.io/helm-charts
+
 
 Let's save the Helm charts locally so we can update them and save them in our git repo
 
-1. Grafana
+#### GRAFANA
 
-    helm pull grafana --repo https://grafana.github.io/helm-charts --untar
+    helm repo add grafana https://grafana.github.io/helm-charts
+
+    helm install my-grafana grafana/grafana -f grafana-values.yaml
+
+#### LOKI
+
+    helm repo add grafana https://grafana.github.io/helm-charts
+    helm repo update
+
+Our raspberrypi worker has a taint:
+
+    $ k get nodes
+    NAME            STATUS   ROLES           AGE     VERSION
+    ac-dream        Ready    control-plane   8d      v1.29.15
+    k8-controller   Ready    <none>          2d11h   v1.29.2
+    raspberrypi     Ready    <none>          8d      v1.29.15
+
+    $ kubectl describe node ac-dream | grep -i taint
+    Taints:             <none>
+    
+    $ kubectl describe node k8-controller | grep -i taint
+    Taints:             <none>
+    
+    $ kubectl describe node raspberrypi | grep -i taint
+    Taints:             dedicated=pi:NoSchedule
+    $ 
+
+If we don't want loki server to ever run on the raspberrypi:
+
+    helm upgrade --install loki grafana/loki-stack \
+      -n monitoring \
+      --set promtail.tolerations[0].key=dedicated \
+      --set promtail.tolerations[0].value=pi \
+      --set promtail.tolerations[0].effect=NoSchedule
+
+
 
 2. Prometheus
 
@@ -456,6 +492,13 @@ Prometheus:
 
 
 ![prometheus-url](images/prometheus-url.png)
+
+---
+# OBSERVING MEMORY STRESS
+
+
+
+
 
 ---
 # MISCELLANEOUS COMMANDS

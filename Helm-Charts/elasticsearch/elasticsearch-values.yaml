@@ -1,0 +1,24 @@
+replicas: 1
+
+volumeClaimTemplate:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: local-storage
+
+nodeSelector:
+  kubernetes.io/hostname: raspberrypi
+
+tolerations:
+  - key: "dedicated"
+    operator: "Equal"
+    value: "pi"
+    effect: "NoSchedule"
+extraEnvs:
+  - name: network.host
+    value: 0.0.0.0
+esConfig:
+  elasticsearch.yml: |
+    network.host: 0.0.0.0
+

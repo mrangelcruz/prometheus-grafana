@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: graylog
+  namespace: graylog
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: graylog
+  template:
+    metadata:
+      labels:
+        app: graylog
+    spec:
+      containers:
+        - name: graylog
+          image: graylog/graylog:5.2
+          ports:
+            - containerPort: 9000
+          volumeMounts:
+            - name: config
+              mountPath: /usr/share/graylog/data/config
+              readOnly: true
+            - name: graylog-data
+              mountPath: /usr/share/graylog/data
+          env:
+            - name: GRAYLOG_CONFIG_FILE
+              value: /usr/share/graylog/data/config/graylog.conf
+      volumes:
+        - name: config
+          configMap:
+            name: graylog-config
+            items:
+              - key: graylog.conf
+                path: graylog.conf
+        - name: graylog-data
+          persistentVolumeClaim:
+            claimName: graylog-data
+

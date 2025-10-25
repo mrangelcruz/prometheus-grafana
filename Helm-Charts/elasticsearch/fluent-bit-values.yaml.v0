@@ -1,0 +1,22 @@
+backend:
+  type: es
+  es:
+    host: elasticsearch-master
+    port: 9200
+    index: fluentbit
+    logstash_prefix: fluentbit
+    http_user: ""
+    http_passwd: ""
+
+tolerations:
+  - key: "dedicated"
+    operator: "Equal"
+    value: "pi"
+    effect: "NoSchedule"
+
+daemonset:
+  enabled: true
+
+service:
+  type: ClusterIP
+

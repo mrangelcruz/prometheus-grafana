@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: graylog-config
+  namespace: graylog
+data:
+  graylog.conf: |
+    is_master = true
+    node_id_file = /usr/share/graylog/data/node-id
+    password_secret = somepasswordpepper
+    root_password_sha2 = 4bbdd5a829dba09d7a7ff4c1367be7d36a017b4267d728d31bd264f63debeaa6
+    rest_listen_uri = http://0.0.0.0:9000/api/
+    web_listen_uri = http://0.0.0.0:9000/
+    mongodb_uri = mongodb://mongodb.graylog.svc.cluster.local:27017/graylog
+    elasticsearch_hosts = http://elasticsearch.graylog.svc.cluster.local:9200
+    allow_leading_wildcard_searches = true
+    allow_highlighting = true
+

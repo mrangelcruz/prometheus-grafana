@@ -1,0 +1,15 @@
+replicas: 1
+minimumMasterNodes: 1
+volumeClaimTemplate:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 5Gi
+esJavaOpts: "-Xmx512m -Xms512m"
+resources:
+  requests:
+    cpu: "100m"
+    memory: "512Mi"
+  limits:
+    cpu: "1000m"
+    memory: "1Gi"

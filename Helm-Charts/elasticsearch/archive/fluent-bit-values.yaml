@@ -1,0 +1,30 @@
+# fluent-bit-values.yaml
+
+nodeSelector:
+  node-role.kubernetes.io/worker: "true"
+
+tolerations:
+  - key: "dedicated"
+    operator: "Equal"
+    value: "pi"
+    effect: "NoSchedule"
+
+daemonset:
+  enabled: true
+
+service:
+  type: ClusterIP
+
+backend:
+  type: es
+  es:
+    host: elasticsearch-master
+    port: 9200
+    tls: On
+    tls.verify: Off
+    http_user: "elastic"
+    http_passwd: "jIJRFJEZHLKLu1wj"
+    http_method: "POST"
+    index: fluentbit
+    logstash_prefix: fluentbit
+

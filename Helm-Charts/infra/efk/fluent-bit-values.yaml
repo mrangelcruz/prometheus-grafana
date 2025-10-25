@@ -1,0 +1,39 @@
+backend:
+  type: es
+  es:
+    host: elasticsearch-master
+    port: 9200
+    tls: On
+    tls_verify: Off
+    http_user: "elastic"
+    http_passwd: "jIJRFJEZHLKLu1wj"
+    logstash_prefix: fluentbit
+    suppress_type_name: On
+
+extraOutputs: |
+  [OUTPUT]
+      Name es
+      Match kube.*
+      Host elasticsearch-master
+      Port 9200
+      HTTP_User elastic
+      HTTP_Passwd jIJRFJEZHLKLu1wj
+      tls On
+      tls.verify Off
+      Logstash_Format On
+      Suppress_Type_Name On
+      Retry_Limit False
+
+  [OUTPUT]
+      Name es
+      Match host.*
+      Host elasticsearch-master
+      Port 9200
+      HTTP_User elastic
+      HTTP_Passwd jIJRFJEZHLKLu1wj
+      tls On
+      tls.verify Off
+      Logstash_Format On
+      Logstash_Prefix node
+      Suppress_Type_Name On
+      Retry_Limit False

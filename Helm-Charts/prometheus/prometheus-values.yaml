@@ -1,0 +1,33 @@
+server:
+  service:
+    type: NodePort
+    nodePort: 30090
+    servicePort: 9090
+  nodeSelector:
+    kubernetes.io/hostname: k8-controller
+  retention: "7d"
+  persistentVolume:
+    enabled: false
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+alertmanager:
+  nodeSelector:
+    kubernetes.io/hostname: k8-controller
+  enabled: false
+
+pushgateway:
+  nodeSelector:
+    kubernetes.io/hostname: k8-controller
+  enabled: false
+
+nodeExporter:
+  enabled: true
+  nodeSelector:
+    kubernetes.io/hostname: k8-controller
+serviceMonitors:
+  enabled: true

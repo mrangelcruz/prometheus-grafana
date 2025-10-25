@@ -1,0 +1,11 @@
+initContainers:
+  - name: init-sysctl
+    image: busybox:latest
+    command:
+      - sh
+      - -c
+      - |
+        echo "Skipping sysctl init container"
+    securityContext:
+      privileged: true
+

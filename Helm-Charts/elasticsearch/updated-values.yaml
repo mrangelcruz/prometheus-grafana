@@ -1,0 +1,13 @@
+backend:
+  es:
+    host: elasticsearch-master
+    port: 9200
+    http_user: elastic
+    http_passwd: aUKqgTVBdx92ZXrg
+    tls: true
+    tls.verify: false
+    scheme: https
+    index: fluentbit
+    logstash_prefix: fluentbit
+  type: es
+

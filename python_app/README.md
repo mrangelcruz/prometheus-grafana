@@ -435,4 +435,309 @@ Then we can play with Grafana charts :). Remember that for application logs job 
 
 as we see, first logs starts to flow
 
+# ALERTS
+
+    Prometheus  --->  Alertmanager  --->  Notification Channels
+        ^                |
+        |                +--> Email, Slack, PagerDuty, Webhook, etc.
+        |
+        +--> Rules file (alerting expressions)
+
+Grafana can also receive alerts directly from Prometheus or define its own rules, but Prometheus + Alertmanager is the canonical setup for system-level alerting.
+
+__⚙️ Step 1 — Deploy Alertmanager (if not yet)__
+
+If you installed Prometheus via Helm, Alertmanager probably already runs inside monitoring.
+Check:
+
+    kubectl get pods -n monitoring | grep alert
+
+If you don’t see one, enable it:
+
+    helm upgrade --install prometheus prometheus-community/prometheus \
+      -n monitoring \
+      --set alertmanager.enabled=true
+
+__🧠 Step 2 — Define Alert Rules__
+
+Create a file (for example alerting-rules.yaml):
+
+    groups:
+    - name: system-alerts
+      rules:
+      # 🔥 Detect OOMKilled pods
+      - alert: PodOOMKilled
+        expr: kube_pod_container_status_last_terminated_reason{reason="OOMKilled"} == 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Pod {{ $labels.pod }} in {{ $labels.namespace }} was OOMKilled"
+          description: "Container {{ $labels.container }} restarted due to OOM on node {{ $labels.node }}"
+
+      # ⚡ High memory usage for your python-logger
+      - alert: PythonLoggerHighMemory
+        expr: process_resident_memory_bytes{job="kubernetes-service-endpoints",service="python-logger"} > 120e6
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "python-logger memory high"
+          description: "Resident memory above 120 MB on pod {{ $labels.instance }}"
+
+      # 💀 Prometheus target down
+      - alert: TargetDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Target {{ $labels.instance }} is down"
+          description: "Prometheus target {{ $labels.job }} failed to scrape metrics"
+
+
+Add it to Prometheus config:
+
+
+    # prometheus.yaml
+    rule_files:
+      - /etc/prometheus/rules/*.yaml
+
+Mount it as a ConfigMap:
+
+    kubectl create configmap prometheus-rules \
+      -n monitoring \
+      --from-file=alerting-rules.yaml
+
+
+and patch your Prometheus deployment (or Helm values) to include that ConfigMap under /etc/prometheus/rules.
+
+__💌 Step 3 — Configure Alertmanager Notifications__
+
+Alertmanager routes alerts to channels.<br>
+
+Example config (alertmanager.yaml):
+
+    route:
+      receiver: 'email-team'
+      group_wait: 10s
+      group_interval: 30s
+      repeat_interval: 2h
+
+    receivers:
+    - name: 'email-team'
+      email_configs:
+      - to: 'ops@example.com'
+        from: 'alertmanager@example.com'
+        smarthost: 'smtp.example.com:587'
+        auth_username: 'alertmanager@example.com'
+        auth_password: 'password123'
+
+Other options:
+
+- Slack (slack_configs)
+
+- Webhooks (webhook_configs)
+
+- PagerDuty, Opsgenie, etc.
+
+
+Reload Alertmanager after editing:
+
+    kubectl rollout restart deployment prometheus-alertmanager -n monitoring
+
+__Step 4 — Optional Grafana Alerting (Simpler)__
+
+Grafana has its own alert rules engine (no Alertmanager needed).
+Steps:
+
+- Go to Grafana → Alerting → Alert rules
+
+- Click New alert rule
+
+- Choose your Prometheus data source
+
+- Use expression like:
+
+      process_resident_memory_bytes{service="python-logger"} > 120000000
+
+- Set “For” = 1m, severity = critical
+
+- Add notification channel (Slack, email, webhook).
+
+
+Grafana will handle the evaluation and alert dispatching internally.
+
+__🔬 Step 6 — Useful Alert Ideas for Your Stack__
+
+![alert-ideas](images/alert-ideas.png)
+
+![summary-alerts](images/summary-alerts.png)
+
+## PROMETHEUS ALERT RULES
+
+    groups:
+    - name: system-and-app-alerts
+      rules:
+
+      # 🔥  OOM-Killed container
+      - alert: PodOOMKilled
+        expr: kube_pod_container_status_last_terminated_reason{reason="OOMKilled"} == 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Pod {{ $labels.pod }} in {{ $labels.namespace }} OOMKilled"
+          description: "Container {{ $labels.container }} restarted due to OOM on node {{ $labels.node }}"
+
+      # ⚡  python-logger high memory usage (>120 MB)
+      - alert: PythonLoggerHighMemory
+        expr: process_resident_memory_bytes{job="kubernetes-service-endpoints",service="python-logger"} > 120e6
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "python-logger memory high"
+          description: "Resident memory above 120 MB on {{ $labels.instance }}"
+
+      # 🔁  Frequent restarts
+      - alert: PodCrashLooping
+        expr: increase(kube_pod_container_status_restarts_total[5m]) > 3
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Pod {{ $labels.pod }} in {{ $labels.namespace }} restarting frequently"
+          description: "Container {{ $labels.container }} restarted >3 times in 5 min"
+
+      # 💀  Target not being scraped
+      - alert: TargetDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Target {{ $labels.instance }} down"
+          description: "Prometheus failed to scrape {{ $labels.job }} target"
+
+      # 🧠  Node low available memory (<10 %)
+      - alert: NodeLowMemory
+        expr: (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) < 0.10
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Low node memory on {{ $labels.instance }}"
+          description: "Available memory below 10 % ({{ $value | humanizePercentage }})"
+
+__DEPLOY__
+
+    kubectl create configmap prometheus-rules \
+      -n monitoring \
+      --from-file=alerting-rules.yaml
+
+
+Ensure your Prometheus config references:<br>
+
+    rule_files:
+      - /etc/prometheus/rules/*.yaml
+
+
+and mount the ConfigMap there (/etc/prometheus/rules).
+
+Reload
+
+    kubectl rollout restart deployment prometheus-server -n monitoring
+
+
+__💌 2️⃣ Alertmanager Config → alertmanager.yaml__
+
+    global:
+      resolve_timeout: 5m
+
+    route:
+      receiver: "default"
+      group_by: ["alertname", "job"]
+      group_wait: 10s
+      group_interval: 30s
+      repeat_interval: 2h
+      routes:
+      - match:
+          severity: critical
+        receiver: "slack-critical"
+      - match:
+          severity: warning
+        receiver: "email-warnings"
+
+    receivers:
+    - name: "default"
+      email_configs:
+      - to: "ops@example.com"
+        from: "alertmanager@example.com"
+        smarthost: "smtp.example.com:587"
+        auth_username: "alertmanager@example.com"
+        auth_password: "your-smtp-password"
+
+    - name: "email-warnings"
+      email_configs:
+      - to: "devops@example.com"
+        from: "alertmanager@example.com"
+        smarthost: "smtp.example.com:587"
+        auth_username: "alertmanager@example.com"
+        auth_password: "your-smtp-password"
+
+    - name: "slack-critical"
+      slack_configs:
+      - api_url: "https://hooks.slack.com/services/<whatever-your-secs-are>"
+        channel: "#cluster-alerts"
+        title: "{{ .CommonAnnotations.summary }}"
+        text: "{{ .CommonAnnotations.description }}"
+
+__➕ Deploy it__
+
+    kubectl create secret generic alertmanager-config \
+      -n monitoring \
+      --from-file=alertmanager.yaml
+
+Restart Alertmanager:
+
+    kubectl rollout restart deployment prometheus-alertmanager -n monitoring
+
+__🔍 3️⃣ Verify End-to-End__
+
+
+    # Check that Prometheus loaded your rules
+    http://localhost:9090/alerts
+
+    # View active alerts
+    http://localhost:9093/#/alerts
+
+__Trigger tests:__
+
+    # Intentionally stress memory
+    curl http://192.168.1.219:30500/stress/mem
+    # Or create an OOM by lowering the pod memory limit again
+
+Within ~1 minute you should see:
+
+    ALERTS{alertname="PodOOMKilled",severity="critical"} 1
+
+
+and a notification in Slack/email.
+
+__📈 4️⃣ Grafana Alerting Alternative (optional)__
+
+You can import the same PromQL expressions as Grafana alert rules:
+
+- Expression: process_resident_memory_bytes{service="python-logger"} > 120e6
+
+- Condition: “for 2 min”
+
+- Channel: Slack/email webhook
+
+Grafana handles the notification internally — simpler for small setups.
+
+__✅ 5️⃣ Summary_
+
+![slack-alerting](images/slack-alerting.png)
 
